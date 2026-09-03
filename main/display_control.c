@@ -130,8 +130,12 @@ esp_err_t display_control_set_config(const display_control_config_t *config)
     }
 
     current_config = *config;
-    schedule_state_known = false;
-    wake_override_until_us = 0;
+    /*
+     * Keep the evaluated schedule state and any active touch-wake override.
+     * The evaluation below will still react immediately when the new
+     * configuration actually crosses an on/off boundary, while unrelated
+     * edits (such as moving the power button) cannot cancel a scheduled wake.
+     */
     display_control_position_power_button();
     display_control_refresh_power_button_visibility();
 

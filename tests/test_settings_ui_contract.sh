@@ -43,6 +43,12 @@ rg -q 'DISPLAY_NVS_VISUALS_KEY "disp_icon"' "$display_file"
 rg -q 'DISPLAY_POWER_BUTTON_HIDDEN_LEGACY = 2' "$display_header"
 rg -q 'display_button_visibility_resolve' "$display_file"
 rg -Fq 'lv_obj_set_style_opa(power_button' "$display_file"
+set_config_body="$(sed -n '/^esp_err_t display_control_set_config/,/^}/p' "$display_file")"
+if grep -Eq 'schedule_state_known[[:space:]]*=[[:space:]]*false|wake_override_until_us[[:space:]]*=[[:space:]]*0' \
+    <<<"$set_config_body"; then
+    echo "saving display settings must preserve an active scheduled wake" >&2
+    exit 1
+fi
 rg -q 'lv_obj_set_size\(screen, 20, 14\)' "$display_file"
 rg -q 'lv_obj_align\(screen, LV_ALIGN_TOP_MID, 0, 0\)' "$display_file"
 if rg -q 'display_off_slash_points|lv_line_create' "$display_file"; then
