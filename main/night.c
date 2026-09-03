@@ -1,4 +1,5 @@
 #include "night.h"
+#include "hashrate_chart_scale.h"
 #include "home.h"
 #include "settings.h"
 #include "wifi.h"
@@ -210,15 +211,13 @@ void night_update_hashrate(const char *hashrate)
         }
     }
 
-    // Set range with padding for better visual appearance
+    // Use a rounded scale so every generated Y-axis label is easy to scan.
     if (max_value > 0)
     {
-        float range_padding = (max_value - min_value) * 0.1f; // 10% padding
-        float y_min = (min_value > range_padding) ? (min_value - range_padding) : 0;
-        float y_max = max_value + range_padding + 5; // Extra padding at top
-
+        hashrate_chart_scale_t scale;
+        hashrate_chart_scale_calculate(min_value, max_value, &scale);
         lv_chart_set_range(hashrate_chart, LV_CHART_AXIS_PRIMARY_Y,
-                           (lv_coord_t)y_min, (lv_coord_t)y_max);
+                           (lv_coord_t)scale.minimum, (lv_coord_t)scale.maximum);
     }
 }
 
@@ -282,11 +281,10 @@ static void apply_cached_hashrate(void)
 
     if (have_values)
     {
-        float range_padding = (max_value - min_value) * 0.1f;
-        float y_min = (min_value > range_padding) ? (min_value - range_padding) : 0;
-        float y_max = max_value + range_padding + 5;
+        hashrate_chart_scale_t scale;
+        hashrate_chart_scale_calculate(min_value, max_value, &scale);
         lv_chart_set_range(hashrate_chart, LV_CHART_AXIS_PRIMARY_Y,
-                           (lv_coord_t)y_min, (lv_coord_t)y_max);
+                           (lv_coord_t)scale.minimum, (lv_coord_t)scale.maximum);
     }
 }
 
