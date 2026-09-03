@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Input-safety ceiling, not a fixed chart range. The live scale continues to
+ * follow the observed hashrate. This stays inside LVGL's 16-bit coordinate
+ * range and keeps the widest permitted tick label inside the axis gutter. */
 #define HASHRATE_CHART_MAX_VALUE 30000.0f
 
 typedef struct

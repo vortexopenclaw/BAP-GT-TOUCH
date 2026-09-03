@@ -97,6 +97,11 @@ static void assert_layout_bounds(void)
 
 static void assert_all_supported_ranges_stay_bounded(void)
 {
+    const int32_t chart_height = 480 - HASHRATE_CHART_HEIGHT_REDUCTION;
+    const int32_t chart_content_height = chart_height -
+                                         HASHRATE_CHART_TOP_PADDING -
+                                         HASHRATE_CHART_BOTTOM_PADDING;
+
     for (int32_t minimum = 0; minimum <= 30000; minimum += 1000)
     {
         for (int32_t maximum = minimum; maximum <= 30000; maximum += 1000)
@@ -108,6 +113,20 @@ static void assert_all_supported_ranges_stay_bounded(void)
             assert(scale.maximum >= maximum);
             assert(scale.maximum <= (int32_t)HASHRATE_CHART_MAX_VALUE);
             assert(scale.maximum - scale.minimum == scale.step * 5);
+
+            /* The rounded bounds are the actual LVGL range, so every accepted
+             * data endpoint must map inside the fixed chart content rectangle. */
+            int32_t minimum_y = map_value_to_y(minimum, &scale, chart_content_height);
+            int32_t maximum_y = map_value_to_y(maximum, &scale, chart_content_height);
+            assert(minimum_y >= 0 && minimum_y <= chart_content_height);
+            assert(maximum_y >= 0 && maximum_y <= chart_content_height);
+
+            for (int32_t tick = 0; tick < 6; tick++)
+            {
+                int32_t tick_value = scale.minimum + (tick * scale.step);
+                int32_t tick_y = map_value_to_y(tick_value, &scale, chart_content_height);
+                assert(tick_y >= 0 && tick_y <= chart_content_height);
+            }
         }
     }
 }
