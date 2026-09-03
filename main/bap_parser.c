@@ -87,6 +87,11 @@ esp_err_t bap_handle_response(const bap_message_t *msg) {
         ret = bap_handle_pool_user_response(msg->value);
     } else if (strcmp(msg->parameter, "fan_speed") == 0) {
         ret = bap_handle_fan_rpm_response(msg->value);
+        /*
+         * These responses are optional. Older ESP-Miner releases omit them
+         * from systemInfo, so each value updates independently without gating
+         * legacy fan RPM or any other BAP telemetry.
+         */
     } else if (strcmp(msg->parameter, "auto_fan") == 0) {
         ret = bap_handle_auto_fan_response(msg->value);
     } else if (strcmp(msg->parameter, "manual_fan_speed") == 0) {
