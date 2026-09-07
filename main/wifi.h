@@ -29,6 +29,9 @@ void wifi_update_rssi(const char* rssi);
 void wifi_update_ip(const char* ip);
 void wifi_update_password(const char* password);
 bool wifi_is_connected(void);
+bool wifi_is_time_ready(void);
+bool wifi_https_acquire(uint32_t timeout_ms);
+void wifi_https_release(void);
 const char *wifi_get_current_ip(void);
 
 // Event handlers

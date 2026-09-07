@@ -18,7 +18,9 @@
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "freertos/timers.h"
+#include <time.h>
 
 static const char* TAG = "wifi_screen";
 
@@ -45,6 +47,7 @@ static bool wifi_connect_pending = false;
 static esp_netif_t *wifi_sta_netif = NULL;
 static bool wifi_bap_ssid_received = false;
 static bool wifi_bap_password_received = false;
+static SemaphoreHandle_t wifi_https_mutex = NULL;
 
 typedef enum {
     WIFI_CONNECTION_STATE_DISCONNECTED = 0,
@@ -328,6 +331,14 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
 static esp_err_t wifi_init_common(void)
 {
+    if (!wifi_https_mutex) {
+        wifi_https_mutex = xSemaphoreCreateMutex();
+        if (!wifi_https_mutex) {
+            ESP_LOGE(TAG, "Failed to create HTTPS transport mutex");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
     if (wifi_initialized) {
         return ESP_OK;
     }
@@ -379,6 +390,11 @@ static esp_err_t wifi_init_common(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start WiFi: %s", esp_err_to_name(ret));
         return ret;
+    }
+
+    ret = esp_wifi_set_ps(WIFI_PS_NONE);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to disable WiFi power save: %s", esp_err_to_name(ret));
     }
 
     wifi_initialized = true;
@@ -850,15 +866,32 @@ bool wifi_is_connected(void)
         }
     }
 
-    wifi_ap_record_t ap_info;
-    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK)
-    {
-        current_wifi_info.is_connected = true;
-        return true;
-    }
-
     current_wifi_info.is_connected = false;
     return false;
+}
+
+bool wifi_is_time_ready(void)
+{
+    time_t now = time(NULL);
+    struct tm time_info;
+    localtime_r(&now, &time_info);
+    return time_info.tm_year >= (2023 - 1900);
+}
+
+bool wifi_https_acquire(uint32_t timeout_ms)
+{
+    if (!wifi_https_mutex) {
+        return false;
+    }
+
+    return xSemaphoreTake(wifi_https_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
+void wifi_https_release(void)
+{
+    if (wifi_https_mutex) {
+        xSemaphoreGive(wifi_https_mutex);
+    }
 }
 
 const char *wifi_get_current_ip(void)

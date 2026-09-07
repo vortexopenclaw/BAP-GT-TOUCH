@@ -196,12 +196,20 @@ static bool price_fetch_once(void)
         return false;
     }
 
+    if (!wifi_https_acquire(15000))
+    {
+        return false;
+    }
+
     if (price_fetch_from_url(PRICE_API_URL))
     {
+        wifi_https_release();
         return true;
     }
 
-    return price_fetch_from_url(PRICE_API_FALLBACK_URL);
+    bool fetched = price_fetch_from_url(PRICE_API_FALLBACK_URL);
+    wifi_https_release();
+    return fetched;
 }
 
 static bool price_ensure_netif(void)
@@ -410,6 +418,17 @@ static void price_task(void *arg)
                 lvgl_port_unlock();
             }
             vTaskDelay(pdMS_TO_TICKS(5000));
+            continue;
+        }
+
+        if (!wifi_is_time_ready())
+        {
+            if (lvgl_port_lock(50))
+            {
+                price_set_status("SYNCING TIME");
+                lvgl_port_unlock();
+            }
+            vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
