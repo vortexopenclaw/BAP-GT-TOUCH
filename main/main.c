@@ -3,6 +3,8 @@
 #include "display_control.h"
 #include "settings.h"
 #include "wifi.h"
+#include "price.h"
+#include "mempool.h"
 
 static const char *TAG = "main";
 
@@ -19,6 +21,9 @@ void app_main()
         if (wifi_ret != ESP_OK && wifi_ret != ESP_ERR_NOT_FOUND) {
             ESP_LOGW(TAG, "Saved WiFi startup failed: %s", esp_err_to_name(wifi_ret));
         }
+        // Start existing cache services without waiting for a screen visit.
+        price_service_start();
+        mempool_service_start();
         // screen init
         loading();
         ESP_ERROR_CHECK(display_control_init());

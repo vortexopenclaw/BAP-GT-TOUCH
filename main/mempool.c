@@ -181,9 +181,15 @@ void mempool_screen_create(void)
 
     mempool_rebuild_cards();
 
-    if (mempool_task_handle == NULL)
-    {
-        xTaskCreate(mempool_task, "mempool_task", 6144, NULL, 5, &mempool_task_handle);
+    mempool_service_start();
+}
+
+void mempool_service_start(void)
+{
+    if (mempool_task_handle != NULL) return;
+    if (xTaskCreate(mempool_task, "mempool_task", 6144, NULL, 5, &mempool_task_handle) != pdPASS) {
+        mempool_task_handle = NULL;
+        ESP_LOGE("mempool", "Failed to start mempool refresh service");
     }
 }
 
@@ -266,6 +272,7 @@ static void mempool_task(void *arg)
         }
 
         bool updated = mempool_fetch_once();
+        if (updated) ESP_LOGI("mempool", "Mempool cache refreshed");
         if (lvgl_port_lock(50))
         {
             if (updated)

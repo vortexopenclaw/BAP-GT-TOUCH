@@ -15,6 +15,7 @@
 #include "bap_client.h"
 #include "bap_protocol.h"
 #include "bap_uart.h"
+#include "bap_line_buffer.h"
 #include "bap_parser.h"
 
 static const char *TAG = "BAP_CLIENT";
@@ -440,7 +441,9 @@ static void uart_send_task(void *pvParameters) {
 }
 
 static void uart_receive_task(void *pvParameters) {
-    static uint8_t buffer[1024]; // Use constant instead of bap_uart_get_buffer_size()
+    static uint8_t buffer[1024];
+    bap_line_buffer_t line_buffer;
+    bap_line_buffer_init(&line_buffer);
     
     esp_err_t wdt_ret = esp_task_wdt_add(NULL);
     if (wdt_ret != ESP_OK) {
@@ -454,26 +457,20 @@ static void uart_receive_task(void *pvParameters) {
         
         int len = bap_uart_read(buffer, sizeof(buffer), 100);
         if (len > 0) {
-            buffer[len] = '\0';
-            
-            char *message_start = (char*)buffer;
-            char *message_end;
-            
-            while ((message_end = strstr(message_start, "\r\n")) != NULL) {
-                *message_end = '\0';
-                
-                if (message_start[0] == '$') {
-                    last_response_time = xTaskGetTickCount();
-                    bap_parse_and_handle_message(message_start);
+            for (int i = 0; i < len; i++) {
+                const char *message = NULL;
+                if (!bap_line_buffer_push(&line_buffer, buffer[i], &message) ||
+                    !message || message[0] != '$') {
+                    continue;
                 }
-                
-                message_start = message_end + 2; // Skip \r\n
-            }
-            
-            // Handle case where last message doesn't end with \r\n
-            if (strlen(message_start) > 0 && message_start[0] == '$') {
-                last_response_time = xTaskGetTickCount();
-                bap_parse_and_handle_message(message_start);
+
+                esp_err_t parse_ret = bap_parse_and_handle_message(message);
+                if (parse_ret == ESP_OK) {
+                    if (last_response_time == 0) {
+                        ESP_LOGI(TAG, "First valid BAP response received");
+                    }
+                    last_response_time = xTaskGetTickCount();
+                }
             }
         }
         
