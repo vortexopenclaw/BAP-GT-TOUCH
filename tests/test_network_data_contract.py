@@ -35,6 +35,10 @@ def function_body(text: str, name: str) -> str:
 
 
 class NetworkDataContractTests(unittest.TestCase):
+    def test_startup_is_independent_of_bap_credentials(self) -> None:
+        self.assertIn("wifi_start_saved_connection()", function_body(source("main.c"), "app_main"))
+        self.assertNotIn("nvs_flash_erase", function_body(source("wifi.c"), "wifi_init_common"))
+
     def test_connected_requires_dhcp_address(self) -> None:
         connected = function_body(source("wifi.c"), "wifi_is_connected")
         self.assertIn("ip_info.ip.addr != 0", connected)
